@@ -101,9 +101,9 @@ FROM CatchedPokemon CP, Gym G
 WHERE CP.level = (SELECT MAX(CP.level) FROM CatchedPokemon) AND CP.owner_id = G.leader_id
 ORDER BY nickname;
 
-#19
+#19 no idea
 
-#20
+#20 no idea
 
 #21???
 SELECT name
@@ -120,7 +120,7 @@ FROM Trainer AS T, (SELECT COUNT(hometown) AS cnt, FROM Trainer, ORDER BY hometo
 WHERE SQ.cnt = (SELECT MAX(SQ.cnt) FROM (SELECT COUNT(hometown) AS cnt, FROM Trainer, ORDER BY hometown))
 ORDER BY T.hometown;
 
-#23???
+#23 The idea of this code below is based on my classmate 이동균
 SELECT DISTINCT P.name
 FROM CatchedPokemon AS CP, Pokemon AS P
 WHERE CP.pid = P.id
@@ -148,15 +148,15 @@ FROM Trainer AS T
 JOIN CatchedPokemon ON owner_id = T.id
 ORDER BY T.name, nickname;
 
-#26
+#26 no idea
 
-#27 출력없음
+#27 no output
 SELECT CP.nickname
 FROM CatchedPokemon AS CP, Gym AS G
 WHERE CP.owner_id = (SELECT leader_id FROM GYM WHERE city = 'Sangnok') AND CP.pid = (SELECT id FROM Pokemon WHERE type = 'Water')
 ORDER BY CP.nickname;
 
-#28 출력없음
+#28 no output
 SELECT T.name
 FROM Trainer AS T
 WHERE 3 >= ANY (SELECT CP.pid FROM CatchedPokemon AS CP, Evolution AS E WHERE CP.owner_id = T.id AND CP.pid = E.before_id)
@@ -175,4 +175,8 @@ JOIN CatchedPokemon AS CP ON CP.owner_id = T.id
 GROUP BY T.hometown
 ORDER BY MAX(CP.level) DESC;
 
-#31
+#31 no idea
+
+
+
+#thank you
