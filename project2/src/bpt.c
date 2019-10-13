@@ -1,15 +1,9 @@
 #include "bpt.h"
 
 /*
- * This code is based on ~
- */
-
-/*
  * GLOBAL.
  */
 
-// 헤더파일로 옮기기??? -> 피하고 그때 그때 마다 읽어와주라
-//page_t* HD;
 extern FILE* fp = NULL;
 int num_of_opened_table;
 
@@ -176,7 +170,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 		temp_header.num_of_pages = src->number_of_pages;
 
 		fwrite(&temp_header, PAGE_SIZE, 1, fp);
-		fflush(fp);//O_sync
+		fflush(fp); // O_sync @Linux
 		return;
 	}
 
@@ -193,7 +187,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 			memcpy(&temp_internal.internal_record[i], &src->internal_record[i], sizeof(internal_record));
 
 		fwrite(&temp_internal, PAGE_SIZE, 1, fp);
-		fflush(fp);//O_sync
+		fflush(fp); // O_sync @Linux
 		return;
 	}
 
@@ -210,7 +204,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 			memcpy(&temp_leaf.record[i], &src->record[i], sizeof(record));
 
 		fwrite(&temp_leaf, PAGE_SIZE, 1, fp);
-		fflush(fp);//O_sync
+		fflush(fp); // O_sync @Linux
 
 		return;
 	}
@@ -345,6 +339,7 @@ pagenum_t find_leaf(int64_t key) {
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
+		exit(EXIT_FAILURE);
 	}
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
@@ -586,7 +581,6 @@ void insert_into_node_after_splitting(page_t* node, int64_t key, page_t* right) 
 	// Clear node's key counter for re-filling node's key.
 	node->number_of_keys = 0;
 
-
 	// Copy records to node from back-up record BEFORE the split point.
 	for (int i = 0; i < split_point - 1; ++i) {
 		memcpy(&node->internal_record[i], &backup_internal_record[i], sizeof(internal_record));
@@ -697,95 +691,16 @@ int db_insert(int64_t key, char* value) {
  */
 
 int db_delete(int64_t key) {
-	page_t temp_page;
-	file_read_page(find_leaf(key), &temp_page);
+	page_t * temp_page;
+	temp_page->pagenum = find_leaf(key);
 
+	char * temp_value;
+	db_find(key, temp_value);
 
-}
-
-// 디버깅
-void enqueue(uint64_t offset, queue* q) { q->arr[++q->r] = offset; }
-uint64_t dequeue(queue* q) { return q->arr[q->f++]; }
-
-int get_rank(uint64_t offset) {
-	// Allocate header page and get metadata.
-	page_t* HD;
-	HD = (page_t*)malloc(sizeof(page_t));
-	if (HD == NULL) {
-		perror("Header creation @file_alloc_page.");
-	}
-	file_read_page(PAGENUM_OF_HEADER, HD);
-
-	page_t* pg = (page_t*)malloc(sizeof(page_t));
-	uint64_t next_offset = offset;
-	int rank = 0;
-	while (next_offset != HD->root_page_offset) {
-		file_read_page(offset_to_pagenum(next_offset), pg);
-		next_offset = pg->parent_page_number;
-		rank++;
+	if (temp_value != NULL && temp_page != NULL) {
+		//delete_entry(temp_page, temp_page->pagenum, key);
+		return 0;
 	}
 
-	free(pg);
-	free(HD);
-	return rank;
-}
-
-void print_tree() {
-	// Allocate header page and get metadata.
-	page_t* HD;
-	HD = (page_t*)malloc(sizeof(page_t));
-	if (HD == NULL) {
-		perror("Header creation @file_alloc_page.");
-	}
-	file_read_page(PAGENUM_OF_HEADER, HD);
-
-	if (HD->root_page_offset == 0) {
-		printf("Empty tree!\n");
-		free(HD);
-		return;
-	}
-
-	queue* q = (queue*)malloc(sizeof(queue));
-	q->arr = (uint64_t*)malloc(sizeof(uint64_t) * 100);
-	q->f = 0;
-	q->r = -1;
-
-	enqueue(HD->root_page_offset, q);
-
-	page_t page, parent_node;
-	page_t* node = &page;
-	page_t* parent = &parent_node;
-	int new_rank = 0;
-	while (q->f <= q->r) {
-		uint64_t offset = dequeue(q);
-		file_read_page(offset_to_pagenum(offset), node);
-
-		if (node->parent_page_number != 0) {
-			file_read_page(node->parent_page_number, parent);
-			if (get_rank(offset) != new_rank) {
-				new_rank = get_rank(offset);
-				printf("\n");
-			}
-		}
-
-		if (!node->is_leaf) {
-			for (int i = 0; i < node->number_of_keys; ++i)
-				printf("%ld  ", node->internal_record[i].key);
-			enqueue(node->left_page_number, q);
-			for (int i = 0; i < node->number_of_keys; ++i)
-				enqueue(node->internal_record[i].page_number, q);
-		}
-		else {
-			for (int i = 0; i < node->number_of_keys; ++i)
-				printf("%ld : %s  ", node->record[i].key, node->record[i].value);
-		}
-		printf("| ");
-	}
-	printf("\n");
-
-	free(q->arr);
-	free(q);
-	free(HD);
-
-	return;
+	return -1;
 }

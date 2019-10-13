@@ -8,8 +8,8 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define LEAF_ORDER 4 //32
-#define INTERNAL_ORDER 4 //249
+#define LEAF_ORDER 32
+#define INTERNAL_ORDER 249
 
 #define PAGE_SIZE 4096
 #define VALUE_SIZE 120
@@ -44,7 +44,7 @@ typedef struct internal_page {
 	char reserved[104]; // For standardization
 
 	uint64_t left_page_number;
-	internal_record internal_record[248];
+	internal_record internal_record[INTERNAL_ORDER - 1];
 }internal_page;
 
 typedef struct record {
@@ -60,7 +60,7 @@ typedef struct leaf_page {
 	char reserved[104]; // For standardization
 
 	uint64_t right_sibling_page_number;
-	record record[31];
+	record record[LEAF_ORDER - 1];
 }leaf_page;
 
 /*
@@ -90,8 +90,8 @@ typedef struct page {
 		uint64_t right_sibling_page_number; // Case: Leaf page
 	};
 	union {
-		internal_record internal_record[248]; // Case: Internal page
-		record record[31]; // Case: Leaf page
+		internal_record internal_record[INTERNAL_ORDER - 1]; // Case: Internal page
+		record record[LEAF_ORDER - 1]; // Case: Leaf page
 	};
 }page_t;
 
@@ -105,8 +105,8 @@ typedef struct temp_read_page {
 		uint64_t right_sibling_page_number; // Case: Leaf page
 	};
 	union {
-		internal_record internal_record[248]; // Case: Internal page
-		record record[31]; // Case: Leaf page
+		internal_record internal_record[INTERNAL_ORDER - 1]; // Case: Internal page
+		record record[LEAF_ORDER - 1]; // Case: Leaf page
 	};
 }temp_read_page_t;
 
@@ -159,15 +159,5 @@ node * delete_entry(node * root, node * n, int key, void * pointer);
 void destroy_tree_nodes(node * root);
 node * destroy_tree(node * root);
 */
-
-// 디버깅
-typedef struct queue {
-	uint64_t* arr;
-	int f;
-	int r;
-}queue;
-void enqueue(uint64_t offset, queue* q);
-uint64_t dequeue(queue* q);
-void print_tree();
 
 #endif /* __BPT_H__*/
