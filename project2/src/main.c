@@ -13,10 +13,14 @@ int main(int argc, char ** argv) {
 	memcpy(&temp_path_name, "temp", sizeof(temp_path_name));
 	*/
 
+	// Open DB file priot to other fuctions.
+	if (open_table("temp_DB.txt") != 0) printf("File is successfully opened!\n");
+
 	usage(0);
 
 	while (scanf("%s", instruction) != EOF) {
 		switch (instruction[0]) {
+		/*
 		case 'o': // OPEN
 			inp_val = (char*)malloc(sizeof(char) * VALUE_SIZE);
 			if (inp_val == NULL) {
@@ -27,6 +31,7 @@ int main(int argc, char ** argv) {
 			int table_id = open_table(inp_val);
 			if (table_id != 0) printf("File is successfully opened!\n");
 			break;
+		*/
 		case 'i': // INSERT
 			inp_val = (char*)malloc(sizeof(char) * VALUE_SIZE);
 			if (inp_val == NULL) {

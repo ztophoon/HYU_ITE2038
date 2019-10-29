@@ -194,7 +194,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 	}
 }
 
-int open_table(char* pathname) {
+int open_table(const char* pathname) {
 	int unique_table_id = ++num_of_opened_table; // ??????????????
 
 	// Open file in read & write mode with binary format.
@@ -721,5 +721,22 @@ void print_tree() {
 		if (!node->is_leaf) {
 			for (int i = 0; i < node->number_of_keys; ++i)
 				printf("%ld  ", node->internal_record[i].key);
-			enqueue(node->left_page_number,
+			enqueue(node->left_page_number, q);
+			for (int i = 0; i < node->number_of_keys; ++i)
+				enqueue(node->internal_record[i].page_number, q);
+		}
+		else {
+			for (int i = 0; i < node->number_of_keys; ++i)
+				printf("%ld : %s  ", node->record[i].key, node->record[i].value);
+		}
+		printf("| ");
+	}
+	printf("\n");
+
+	free(q->arr);
+	free(q);
+	free(HD);
+
+	return;
+}
 */
