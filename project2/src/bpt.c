@@ -7,13 +7,6 @@
 extern FILE* fp = NULL;
 int num_of_opened_table;
 
-pagenum_t pagenum_to_offset(pagenum_t pagenum) { 
-	return pagenum * PAGE_SIZE; 
-}
-pagenum_t offset_to_pagenum(pagenum_t offset) { 
-	return offset / PAGE_SIZE; 
-}
-
 void usage(int flag) {
 	printf("Enter any of the following commands after the prompt > :\n"
 		"\to <k>      -- Open existing data file using pathname <k> (an string) or create one.\n"
@@ -23,6 +16,13 @@ void usage(int flag) {
 		"\tq          -- Quit. (Or use Ctl - D.)\n");
 	if (!flag) printf("> ");
 	return;
+}
+
+pagenum_t pagenum_to_offset(pagenum_t pagenum) {
+	return pagenum * PAGE_SIZE;
+}
+pagenum_t offset_to_pagenum(pagenum_t offset) {
+	return offset / PAGE_SIZE;
 }
 
 /*
@@ -38,9 +38,7 @@ pagenum_t file_alloc_page() {
 	}
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
-	/*
-	 * Case: There is free page for allocation.
-	 */
+	// Case: There is free page for allocation.
 	if (HD->free_page_offset != 0) {
 		free_page temp_free_page;
 		fread(&temp_free_page, PAGE_SIZE, 1, fp);
@@ -55,9 +53,7 @@ pagenum_t file_alloc_page() {
 		return ret_pagenum;
 	}
 
-	/*
-	 * Case: There is NO free page for allocation.
-	 */
+	// Case: There is NO free page for allocation.
 	else {
 		HD->free_page_offset = HD->number_of_pages * PAGE_SIZE;
 		fseek(fp, HD->free_page_offset, SEEK_SET);
@@ -115,9 +111,7 @@ void file_read_page(pagenum_t pagenum, page_t * dest) {
 
 	fseek(fp, pagenum_to_offset(pagenum), SEEK_SET);
 
-	/*
-	 * Case: Pagenum indicates header.
-	 */
+	// Case: Pagenum indicates header.
 	if (pagenum == PAGENUM_OF_HEADER) {
 		header_page temp_header;
 		fread(&temp_header, PAGE_SIZE, 1, fp);
@@ -135,9 +129,7 @@ void file_read_page(pagenum_t pagenum, page_t * dest) {
 	dest->is_leaf = temp_page.is_leaf;
 	dest->number_of_keys = temp_page.number_of_keys;
 
-	/*
-	 * Case: Pagenum indicates Internal.
-	 */
+	// Case: Pagenum indicates Internal.
 	if (temp_page.is_leaf == 0) {
 		dest->left_page_number = temp_page.left_page_number;
 		for (int i = 0; i < temp_page.number_of_keys; i++)
@@ -145,9 +137,7 @@ void file_read_page(pagenum_t pagenum, page_t * dest) {
 		return;
 	}
 
-	/*
-	 * Case: Pagenum indicates Leaf.
-	 */
+	// Case: Pagenum indicates Leaf.
 	if (temp_page.is_leaf == 1) {
 		dest->right_sibling_page_number = temp_page.right_sibling_page_number;
 		for (int i = 0; i < temp_page.number_of_keys; i++)
@@ -160,9 +150,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 
 	fseek(fp, pagenum_to_offset(pagenum), SEEK_SET);
 
-	/*
-	 * Case: Pagenum indicates header.
-	 */
+	// Case: Pagenum indicates header.
 	if (pagenum == PAGENUM_OF_HEADER) {
 		header_page temp_header;
 		temp_header.free_page_offset = src->free_page_offset;
@@ -174,9 +162,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 		return;
 	}
 
-	/*
-	 * Case: Pagenum indicates Internal.
-	 */
+	// Case: Pagenum indicates Internal.
 	if (src->is_leaf == 0) {
 		internal_page temp_internal;
 		temp_internal.parent_page_number = src->parent_page_number;
@@ -191,9 +177,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 		return;
 	}
 
-	/*
-	 * Case: Pagenum indicates Leaf.
-	 */
+	// Case: Pagenum indicates Leaf.
 	else {
 		leaf_page temp_leaf;
 		temp_leaf.parent_page_number = src->parent_page_number;
@@ -216,9 +200,7 @@ int open_table(char* pathname) {
 	// Open file in read & write mode with binary format.
 	fp = fopen(pathname, "r+b");
 
-	/*
-	 * Case: There is a file in the path.
-	 */
+	// Case: There is a file in the path.
 	if (fp != NULL) {
 		page_t* HD;
 		HD = (page_t*)malloc(sizeof(page_t));
@@ -233,10 +215,8 @@ int open_table(char* pathname) {
 		return unique_table_id;
 	}
 
-	/*
-	 * Case: There is a NO file in the path.
-	 */
-	 // Open file in read & write mode with binary format.
+	// Case: There is a NO file in the path.
+	// Open file in read & write mode with binary format.
 	fp = fopen(pathname, "w+b");
 	if (fp == NULL) {
 		perror("File open @open_table.");
@@ -268,9 +248,7 @@ int db_find(int64_t key, char* ret_val) {
 
 	//("[%ld: %s] in db_find\n", key, ret_val);
 
-	/*
-	 * Case: The tree is not created yet.
-	 */
+	// Case: The tree is not created yet.
 	if (temp_pagenum == PAGENUM_OF_HEADER) {
 		return 2;
 	}
@@ -281,16 +259,12 @@ int db_find(int64_t key, char* ret_val) {
 	for (idx = 0; idx < temp_page.number_of_keys; ++idx)
 		if (temp_page.record[idx].key == key) break;
 
-	/*
-	 * Case: There is no such key in the tree.
-	 */
+	// Case: There is no such key in the tree.
 	if (idx == temp_page.number_of_keys) {
 		return 1;
 	}
 
-	/*
-	 * Case: Founded matching key matched with the value.
-	 */
+	// Case: Founded matching key matched with the value.
 	else {
 		memcpy(ret_val, &temp_page.record[idx].value, sizeof(VALUE_SIZE));
 		return 0;
@@ -346,16 +320,12 @@ pagenum_t find_leaf(int64_t key) {
 	pagenum_t temp_pagenum = offset_to_pagenum(HD->root_page_offset);
 	free(HD);
 
-	/*
-	 * Case: Pagenum indicates header.
-	 */
+	// Case: Pagenum indicates header.
 	if (temp_pagenum == 0) {
 		return temp_pagenum;
 	}
 
-	/*
-	 * Case: Pagenum indicates non-header.
-	 */
+	// Case: Pagenum indicates non-header.
 	page_t temp_page;
 	file_read_page(temp_pagenum, &temp_page);
 
@@ -447,28 +417,20 @@ void insert_into_leaf_after_splitting(page_t* temp_page, record* new_record) {
 }
 
 void insert_into_parent(page_t* left, int64_t key, page_t* right) {
-	/*
-	 * Case: new root.
-	 */
+	// Case: new root.
 	if (left->parent_page_number == 0) {
 		return insert_into_new_root(left, key, right);
 	}
 
-	/* 
-	 * Case: leaf or node. (Remainder of function body.)
-	 */
+	// Case: leaf or node. (Remainder of function body.)
 	page_t temp_page;
 	file_read_page(left->parent_page_number, &temp_page);
 
-	/*
-	 * Simple case: the new key fits into the node.
-	 */
+	// Simple case: the new key fits into the node.
 	if (temp_page.number_of_keys < INTERNAL_ORDER - 1) 
 		insert_into_node(&temp_page, key, right);
 
-	/* 
-	 * Harder case:  split a node in order to preserve the B+ tree properties.
-	 */
+	// Harder case:  split a node in order to preserve the B+ tree properties.
 	else insert_into_node_after_splitting(&temp_page, key, right);
 
 	return;
@@ -562,11 +524,8 @@ void insert_into_node_after_splitting(page_t* node, int64_t key, page_t* right) 
 	}
 	memcpy(&backup_internal_record[insertion_point], &temp_internal_record, sizeof(internal_record));
 
-	/* 
-	 * Create the new page and copy half records to the old 
-	 * and half to the new.
-	 */
-
+	// Create the new page and copy half records to the old and half to the new.
+	
 	// Make split point
 	int split_point = cut(INTERNAL_ORDER - 1);
 
@@ -609,18 +568,13 @@ void insert_into_node_after_splitting(page_t* node, int64_t key, page_t* right) 
 	file_write_page(temp_page.pagenum, &temp_page);
 	file_write_page(&temp_page.left_page_number, &child);
 
-	/* 
-	 * Insert a new key into the parent of the two pages resulting from the split, 
-	 * with the old page to the left and the new to the right.
-	 */
-
+	// Insert a new key into the parent of the two pages resulting from the split,
+	// with the old page to the left and the new to the right.
 	return insert_into_parent(node, k_prime, &temp_page);
 }
 
 int db_insert(int64_t key, char* value) {
-	/* The current implementation ignores
-	 * duplicates.
-	 */
+	// The current implementation ignores duplicates.
 	int findng_result = db_find(key, value);
 	if (findng_result == 0 || findng_result == -1) {
 		return -1;
@@ -636,9 +590,7 @@ int db_insert(int64_t key, char* value) {
 	}
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
-	/* Create a new record for the
-	 * value.
-	 */
+	// Create a new record for the value.
 	record* new_record = (record*)malloc(sizeof(record));
 	if (new_record == NULL) {
 		perror("Record creation @db_insert.");
@@ -651,9 +603,8 @@ int db_insert(int64_t key, char* value) {
 
 	//printf("[%ld: %s] record\n", key, new_record->value);
 
-	/* Case: the tree does not exist yet.
-	 * Start a new tree.
-	 */
+	// Case: the tree does not exist yet. 
+	// Start a new tree.
 	if (HD->root_page_offset == 0) {
 		start_new_tree(new_record);
 		free(new_record);
@@ -661,22 +612,18 @@ int db_insert(int64_t key, char* value) {
 		return 0;
 	}
 
-	/* Case: the tree already exists.
-	 * (Rest of function body.)
-	 */
+	// Case: the tree already exists. (Rest of function body.)
 	pagenum_t temp_pagenum = find_leaf(key);
 
 	page_t temp_page;
 	file_read_page(temp_pagenum, &temp_page);
 
-	/* Case: leaf has room for key and value.
-	 */
+	// Case: leaf has room for key and value.
 	if (temp_page.number_of_keys < LEAF_ORDER - 1) {
 		insert_into_leaf(&temp_page, new_record);
 	}
 
-	/* Case: leaf must be split.
-	*/
+	// Case: leaf must be split.
 	else {
 		insert_into_leaf_after_splitting(&temp_page, new_record);
 	}
@@ -704,3 +651,92 @@ int db_delete(int64_t key) {
 
 	return -1;
 }
+
+// 디버깅
+/*
+void enqueue(uint64_t offset, queue* q) { q->arr[++q->r] = offset; }
+uint64_t dequeue(queue* q) { return q->arr[q->f++]; }
+
+int get_rank(uint64_t offset) {
+	// Allocate header page and get metadata.
+	page_t* HD;
+	HD = (page_t*)malloc(sizeof(page_t));
+	if (HD == NULL) {
+		perror("Header creation @file_alloc_page.");
+	}
+	file_read_page(PAGENUM_OF_HEADER, HD);
+
+	page_t* pg = (page_t*)malloc(sizeof(page_t));
+	uint64_t next_offset = offset;
+	int rank = 0;
+	while (next_offset != HD->root_page_offset) {
+		file_read_page(offset_to_pagenum(next_offset), pg);
+		next_offset = pg->parent_page_number;
+		rank++;
+	}
+
+	free(pg);
+	free(HD);
+	return rank;
+}
+
+void print_tree() {
+	// Allocate header page and get metadata.
+	page_t* HD;
+	HD = (page_t*)malloc(sizeof(page_t));
+	if (HD == NULL) {
+		perror("Header creation @file_alloc_page.");
+	}
+	file_read_page(PAGENUM_OF_HEADER, HD);
+
+	if (HD->root_page_offset == 0) {
+		printf("Empty tree!\n");
+		free(HD);
+		return;
+	}
+
+	queue* q = (queue*)malloc(sizeof(queue));
+	q->arr = (uint64_t*)malloc(sizeof(uint64_t) * 100);
+	q->f = 0;
+	q->r = -1;
+
+	enqueue(HD->root_page_offset, q);
+
+	page_t page, parent_node;
+	page_t* node = &page;
+	page_t* parent = &parent_node;
+	int new_rank = 0;
+	while (q->f <= q->r) {
+		uint64_t offset = dequeue(q);
+		file_read_page(offset_to_pagenum(offset), node);
+
+		if (node->parent_page_number != 0) {
+			file_read_page(node->parent_page_number, parent);
+			if (get_rank(offset) != new_rank) {
+				new_rank = get_rank(offset);
+				printf("\n");
+			}
+		}
+
+		if (!node->is_leaf) {
+			for (int i = 0; i < node->number_of_keys; ++i)
+				printf("%ld  ", node->internal_record[i].key);
+			enqueue(node->left_page_number, q);
+			for (int i = 0; i < node->number_of_keys; ++i)
+				enqueue(node->internal_record[i].page_number, q);
+		}
+		else {
+			for (int i = 0; i < node->number_of_keys; ++i)
+				printf("%ld : %s  ", node->record[i].key, node->record[i].value);
+		}
+		printf("| ");
+	}
+	printf("\n");
+
+	free(q->arr);
+	free(q);
+	free(HD);
+
+	return;
+}
+*/

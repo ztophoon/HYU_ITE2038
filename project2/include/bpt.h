@@ -1,16 +1,14 @@
 #ifndef __BPT_H__
 #define __BPT_H__
 
-// Uncomment the line below if you are compiling on Windows.
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
-#define LEAF_ORDER 32
-#define INTERNAL_ORDER 249
-
+#define LEAF_ORDER 4 //32
+#define INTERNAL_ORDER 4 //249
 #define PAGE_SIZE 4096
 #define VALUE_SIZE 120
 #define PAGENUM_OF_HEADER 0
@@ -23,12 +21,14 @@ typedef struct header_page {
 	uint64_t free_page_offset;
 	uint64_t root_page_offset;
 	uint64_t num_of_pages;
-	char reserved[4072]; // For standardization
+	// For standardization
+	char reserved[4072];
 }header_page;
 
 typedef struct free_page {
 	uint64_t next_free_page_number;
-	char reserved[4088]; // For standardization
+	// For standardization
+	char reserved[4088];
 }free_page;
 
 typedef struct internal_record {
@@ -41,7 +41,8 @@ typedef struct internal_page {
 	uint32_t is_leaf;
 	uint32_t number_of_keys;
 
-	char reserved[104]; // For standardization
+	// For standardization
+	char reserved[104];
 
 	uint64_t left_page_number;
 	internal_record internal_record[INTERNAL_ORDER - 1];
@@ -57,7 +58,8 @@ typedef struct leaf_page {
 	uint32_t is_leaf;
 	uint32_t number_of_keys;
 
-	char reserved[104]; // For standardization
+	// For standardization
+	char reserved[104];
 
 	uint64_t right_sibling_page_number;
 	record record[LEAF_ORDER - 1];
@@ -99,7 +101,8 @@ typedef struct temp_read_page {
 	uint64_t parent_page_number;
 	int32_t is_leaf;
 	uint32_t number_of_keys;
-	char reserved[104]; // For standardization
+	// For standardization
+	char reserved[104];
 	union {
 		uint64_t left_page_number; // Case: Internal page
 		uint64_t right_sibling_page_number; // Case: Leaf page
