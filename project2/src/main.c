@@ -15,7 +15,7 @@ int main(int argc, char ** argv) {
 
 	usage(0);
 
-	while (scanf("%s", &instruction) != EOF) {
+	while (scanf("%s", instruction) != EOF) {
 		switch (instruction[0]) {
 		case 'o': // OPEN
 			inp_val = (char*)malloc(sizeof(char) * VALUE_SIZE);
@@ -48,7 +48,7 @@ int main(int argc, char ** argv) {
 			}
 			scanf("%d", &key);
 			int findng_result = db_find(key, ret_val);
-			if (findng_result == 0) printf("There is matching key matched with the value.\n%ld : %s\n", key, ret_val);
+			if (findng_result == 0) printf("There is matching key matched with the value.\n%d : %s\n", key, ret_val);
 			else if (findng_result == 1) printf("Finding failed. (There is no such key in the tree).\n");
 			else if (findng_result == 2) printf("Finding failed. (Tree does not exisit).\n");
 			free(ret_val);
@@ -56,7 +56,7 @@ int main(int argc, char ** argv) {
 		case 'd': // DELETE
 			scanf("%d", &key);
 			int deleting_result = db_delete(key);
-			if (deleting_result == 0) printf("Deleting key %ld complete.\n", key);
+			if (deleting_result == 0) printf("Deleting key %d complete.\n", key);
 			else if (deleting_result == -1) printf("Deletion failed.\n");
 			break;
 		case 'q': // QUIT

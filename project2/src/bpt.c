@@ -4,8 +4,8 @@
  * GLOBAL.
  */
 
-extern FILE* fp = NULL;
-int num_of_opened_table;
+FILE* fp = NULL;
+int num_of_opened_table = 0;
 
 void usage(int flag) {
 	printf("Enter any of the following commands after the prompt > :\n"
@@ -556,17 +556,17 @@ void insert_into_node_after_splitting(page_t* node, int64_t key, page_t* right) 
 	// Change the children's parent page number into parent page number of temporary page.
 	page_t child;
 	for (int i = 0; i < temp_page.number_of_keys; ++i) {
-		file_read_page(&temp_page.internal_record[i].page_number, &child);
+		file_read_page(temp_page.internal_record[i].page_number, &child);
 		child.parent_page_number = temp_page.parent_page_number;
-		file_write_page(&temp_page.internal_record[i].page_number, &child);
+		file_write_page(temp_page.internal_record[i].page_number, &child);
 	}
-	file_read_page(&temp_page.left_page_number, &child);
+	file_read_page(temp_page.left_page_number, &child);
 	child.parent_page_number = temp_page.parent_page_number;
 	
 	// Update the pages to the file.
 	file_write_page(node->pagenum, node);
 	file_write_page(temp_page.pagenum, &temp_page);
-	file_write_page(&temp_page.left_page_number, &child);
+	file_write_page(temp_page.left_page_number, &child);
 
 	// Insert a new key into the parent of the two pages resulting from the split,
 	// with the old page to the left and the new to the right.
@@ -721,22 +721,5 @@ void print_tree() {
 		if (!node->is_leaf) {
 			for (int i = 0; i < node->number_of_keys; ++i)
 				printf("%ld  ", node->internal_record[i].key);
-			enqueue(node->left_page_number, q);
-			for (int i = 0; i < node->number_of_keys; ++i)
-				enqueue(node->internal_record[i].page_number, q);
-		}
-		else {
-			for (int i = 0; i < node->number_of_keys; ++i)
-				printf("%ld : %s  ", node->record[i].key, node->record[i].value);
-		}
-		printf("| ");
-	}
-	printf("\n");
-
-	free(q->arr);
-	free(q);
-	free(HD);
-
-	return;
-}
+			enqueue(node->left_page_number,
 */
