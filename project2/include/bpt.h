@@ -123,6 +123,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src);
  */
 
  // Output and utility.
+int open_table(char* pathname);
 void usage(int flag);
 pagenum_t find_leaf(int64_t key);
 int db_find(int64_t key, char* ret_val);
@@ -162,5 +163,18 @@ node * delete_entry(node * root, node * n, int key, void * pointer);
 void destroy_tree_nodes(node * root);
 node * destroy_tree(node * root);
 */
+
+
+// ********** 디버깅 **********
+typedef struct queue
+{
+	pagenum_t* arr;
+	int f;
+	int r;
+}queue;
+
+void enqueue(pagenum_t offset, queue* q);
+pagenum_t dequeue(queue* q);
+void print_tree();
 
 #endif /* __BPT_H__*/

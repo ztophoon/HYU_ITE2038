@@ -9,11 +9,11 @@ int num_of_opened_table = 0;
 
 void usage(int flag) {
 	printf("Enter any of the following commands after the prompt > :\n"
-		"\to <k>      -- Open existing data file using pathname <k> (an string) or create one.\n"
-		"\ti <k> <v>  -- Insert <k> (an integer) as key and <v> (a string) as value).\n"
-		"\tf <k>      -- Find and prtnt the value under key <k>.\n"
-		"\td <k>      -- Delete key <k> and its associated value.\n"
-		"\tq          -- Quit. (Or use Ctl - D.)\n");
+		//"\to <k>      -- Open existing data file using pathname <k> (an string) or create one.\n"
+		"\ti <k> <v> -- Insert <k>(integer) as key and <v>(string) as value).\n"
+		"\tf <k>     -- Find and prtnt the value under key <k>.\n"
+		"\td <k>     -- Delete key <k> and its associated value.\n"
+		"\tq         -- Quit. (Or use Ctrl+d)\n");
 	if (!flag) printf("> ");
 	return;
 }
@@ -194,7 +194,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 	}
 }
 
-int open_table(const char* pathname) {
+int open_table(char* pathname) {
 	int unique_table_id = ++num_of_opened_table; // ??????????????
 
 	// Open file in read & write mode with binary format.
@@ -236,7 +236,6 @@ int open_table(const char* pathname) {
 	HD->number_of_pages = 1;
 
 	file_write_page(PAGENUM_OF_HEADER, HD);
-	//// 희석이 형은 여기서 file_alloc_page
 	file_alloc_page();
 
 	free(HD);
@@ -652,10 +651,10 @@ int db_delete(int64_t key) {
 	return -1;
 }
 
-// 디버깅
-/*
-void enqueue(uint64_t offset, queue* q) { q->arr[++q->r] = offset; }
-uint64_t dequeue(queue* q) { return q->arr[q->f++]; }
+// ********** 디버깅 **********
+
+void enqueue(pagenum_t offset, queue* q) { q->arr[++q->r] = offset; }
+pagenum_t dequeue(queue* q) { return q->arr[q->f++]; }
 
 int get_rank(uint64_t offset) {
 	// Allocate header page and get metadata.
@@ -739,4 +738,3 @@ void print_tree() {
 
 	return;
 }
-*/

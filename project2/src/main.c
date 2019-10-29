@@ -41,7 +41,7 @@ int main(int argc, char ** argv) {
 			scanf("%d %s", &key, inp_val);
 			//printf("[%ld: %s] in main\n", key, inp_val);
 			db_insert(key, inp_val);
-			//print_tree();
+			print_tree();
 			free(inp_val);
 			break;
 		case 'f': // FIND
