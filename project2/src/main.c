@@ -14,7 +14,7 @@ int main(int argc, char ** argv) {
 	*/
 
 	// Open DB file priot to other fuctions.
-	if (open_table("temp_DB.txt") != 0) printf("File is successfully opened!\n");
+	if (open_table("temp.db") != 0) printf("File is successfully opened!\n");
 
 	usage(0);
 

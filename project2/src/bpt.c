@@ -9,7 +9,7 @@ int num_of_opened_table = 0;
 
 void usage(int flag) {
 	printf("Enter any of the following commands after the prompt > :\n"
-		//"\to <k>      -- Open existing data file using pathname <k> (an string) or create one.\n"
+		//"\to <k>     -- Open existing data file using pathname <k> (an string) or create one.\n"
 		"\ti <k> <v> -- Insert <k>(integer) as key and <v>(string) as value).\n"
 		"\tf <k>     -- Find and prtnt the value under key <k>.\n"
 		"\td <k>     -- Delete key <k> and its associated value.\n"
@@ -40,13 +40,12 @@ pagenum_t file_alloc_page() {
 
 	// Case: There is free page for allocation.
 	if (HD->free_page_offset != 0) {
-		free_page temp_free_page;
+		pagenum_t ret_pagenum = offset_to_pagenum(HD->free_page_offset);
+
+		free_page_t temp_free_page;
+		fseek(fp, HD->free_page_offset, SEEK_SET);
 		fread(&temp_free_page, PAGE_SIZE, 1, fp);
-
-		pagenum_t ret_pagenum;
-		ret_pagenum = offset_to_pagenum(HD->free_page_offset);
 		HD->free_page_offset = temp_free_page.next_free_page_number;
-
 		file_write_page(PAGENUM_OF_HEADER, HD);
 
 		free(HD);
@@ -56,25 +55,24 @@ pagenum_t file_alloc_page() {
 	// Case: There is NO free page for allocation.
 	else {
 		HD->free_page_offset = HD->number_of_pages * PAGE_SIZE;
-		fseek(fp, HD->free_page_offset, SEEK_SET);
+		pagenum_t ret_pagenum = offset_to_pagenum(HD->free_page_offset);
 		
+		fseek(fp, HD->free_page_offset, SEEK_SET);
 		//printf(" [%d] ", HD->free_page_offset);
 
-		free_page temp_free_page;
+		free_page_t temp_free_page;
 		for (int i = 1; i < 50; i++) {
 			temp_free_page.next_free_page_number = HD->free_page_offset + i * PAGE_SIZE;
 			fwrite(&temp_free_page, PAGE_SIZE, 1, fp);
 			fflush(fp); //O_sync
 		}
+
 		// Creating 50th free page.
 		temp_free_page.next_free_page_number = 0;
 		fwrite(&temp_free_page, PAGE_SIZE, 1, fp);
 		fflush(fp); //O_sync
 
 		HD->number_of_pages += 50;
-
-		pagenum_t ret_pagenum;
-		ret_pagenum = offset_to_pagenum(HD->free_page_offset);
 		HD->free_page_offset += PAGE_SIZE;
 
 		file_write_page(PAGENUM_OF_HEADER, HD);
@@ -93,7 +91,7 @@ void file_free_page(pagenum_t pagenum) {
 	}
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
-	free_page temp_free_page;
+	free_page_t temp_free_page;
 	temp_free_page.next_free_page_number = offset_to_pagenum(HD->free_page_offset);
 	HD->free_page_offset = pagenum_to_offset(pagenum);
 
@@ -113,7 +111,7 @@ void file_read_page(pagenum_t pagenum, page_t * dest) {
 
 	// Case: Pagenum indicates header.
 	if (pagenum == PAGENUM_OF_HEADER) {
-		header_page temp_header;
+		header_page_t temp_header;
 		fread(&temp_header, PAGE_SIZE, 1, fp);
 		dest->free_page_offset = temp_header.free_page_offset;
 		dest->root_page_offset = temp_header.root_page_offset;
@@ -132,16 +130,16 @@ void file_read_page(pagenum_t pagenum, page_t * dest) {
 	// Case: Pagenum indicates Internal.
 	if (temp_page.is_leaf == 0) {
 		dest->left_page_number = temp_page.left_page_number;
-		for (int i = 0; i < temp_page.number_of_keys; i++)
-			memcpy(&dest->internal_record[i], &temp_page.internal_record[i], sizeof(internal_record));
+		for (int i = 0; i < temp_page.number_of_keys; ++i)
+			memcpy(&dest->internal_record[i], &temp_page.internal_record[i], sizeof(internal_record_t));
 		return;
 	}
 
 	// Case: Pagenum indicates Leaf.
 	if (temp_page.is_leaf == 1) {
 		dest->right_sibling_page_number = temp_page.right_sibling_page_number;
-		for (int i = 0; i < temp_page.number_of_keys; i++)
-			memcpy(&dest->record[i], &temp_page.record[i], sizeof(record));
+		for (int i = 0; i < temp_page.number_of_keys; ++i)
+			memcpy(&dest->record[i], &temp_page.record[i], sizeof(record_t));
 		return;
 	}
 }
@@ -152,7 +150,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 
 	// Case: Pagenum indicates header.
 	if (pagenum == PAGENUM_OF_HEADER) {
-		header_page temp_header;
+		header_page_t temp_header;
 		temp_header.free_page_offset = src->free_page_offset;
 		temp_header.root_page_offset = src->root_page_offset;
 		temp_header.num_of_pages = src->number_of_pages;
@@ -164,13 +162,13 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 
 	// Case: Pagenum indicates Internal.
 	if (src->is_leaf == 0) {
-		internal_page temp_internal;
+		internal_page_t temp_internal;
 		temp_internal.parent_page_number = src->parent_page_number;
 		temp_internal.is_leaf = src->is_leaf;
 		temp_internal.number_of_keys = src->number_of_keys;
 		temp_internal.left_page_number = src->left_page_number;
-		for (int i = 0; i < temp_internal.number_of_keys; i++)
-			memcpy(&temp_internal.internal_record[i], &src->internal_record[i], sizeof(internal_record));
+		for (int i = 0; i < temp_internal.number_of_keys; ++i)
+			memcpy(&temp_internal.internal_record[i], &src->internal_record[i], sizeof(internal_record_t));
 
 		fwrite(&temp_internal, PAGE_SIZE, 1, fp);
 		fflush(fp); // O_sync @Linux
@@ -179,13 +177,13 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 
 	// Case: Pagenum indicates Leaf.
 	else {
-		leaf_page temp_leaf;
+		leaf_page_t temp_leaf;
 		temp_leaf.parent_page_number = src->parent_page_number;
 		temp_leaf.is_leaf = src->is_leaf;
 		temp_leaf.number_of_keys = src->number_of_keys;
 		temp_leaf.right_sibling_page_number = src->right_sibling_page_number;
-		for (int i = 0; i < temp_leaf.number_of_keys; i++)
-			memcpy(&temp_leaf.record[i], &src->record[i], sizeof(record));
+		for (int i = 0; i < temp_leaf.number_of_keys; ++i)
+			memcpy(&temp_leaf.record[i], &src->record[i], sizeof(record_t));
 
 		fwrite(&temp_leaf, PAGE_SIZE, 1, fp);
 		fflush(fp); // O_sync @Linux
@@ -197,11 +195,9 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 int open_table(char* pathname) {
 	int unique_table_id = ++num_of_opened_table; // ??????????????
 
-	// Open file in read & write mode with binary format.
-	fp = fopen(pathname, "r+b");
-
 	// Case: There is a file in the path.
-	if (fp != NULL) {
+	// Open file in read & write mode with binary format.
+	if ((fp = fopen(pathname, "r+b")) != NULL) {
 		page_t* HD;
 		HD = (page_t*)malloc(sizeof(page_t));
 		if (HD == NULL) {
@@ -217,29 +213,32 @@ int open_table(char* pathname) {
 
 	// Case: There is a NO file in the path.
 	// Open file in read & write mode with binary format.
-	fp = fopen(pathname, "w+b");
-	if (fp == NULL) {
-		perror("File open @open_table.");
-		exit(EXIT_FAILURE);
+	else {
+		fp = fopen(pathname, "w+b");
+		if (fp == NULL) {
+			perror("File open @open_table.");
+			exit(EXIT_FAILURE);
+		}
+
+		page_t* HD;
+		HD = (page_t*)malloc(sizeof(page_t));
+		if (HD == NULL) {
+			perror("Page creation @open_table.");
+			exit(EXIT_FAILURE);
+		}
+
+		// Create new header page.
+		HD->pagenum = 0;
+		HD->free_page_offset = 0;
+		HD->root_page_offset = 0;
+		HD->number_of_pages = 1;
+
+		file_write_page(PAGENUM_OF_HEADER, HD);
+		file_alloc_page();
+
+		free(HD);
+		return unique_table_id;
 	}
-
-	page_t* HD;
-	HD = (page_t*)malloc(sizeof(page_t));
-	if (HD == NULL) {
-		perror("Page creation @open_table.");
-		exit(EXIT_FAILURE);
-	}
-
-	// Create new header page.
-	HD->free_page_offset = 0;
-	HD->root_page_offset = 0;
-	HD->number_of_pages = 1;
-
-	file_write_page(PAGENUM_OF_HEADER, HD);
-	file_alloc_page();
-
-	free(HD);
-	return unique_table_id;
 }
 
 int db_find(int64_t key, char* ret_val) {
@@ -254,16 +253,18 @@ int db_find(int64_t key, char* ret_val) {
 
 	page_t temp_page;
 	file_read_page(temp_pagenum, &temp_page);
+
 	int idx;
 	for (idx = 0; idx < temp_page.number_of_keys; ++idx)
-		if (temp_page.record[idx].key == key) break;
+		if (temp_page.record[idx].key == key)
+			break;
 
 	// Case: There is no such key in the tree.
 	if (idx == temp_page.number_of_keys) {
 		return 1;
 	}
 
-	// Case: Founded matching key matched with the value.
+	// Case: Founded matching key. Return matched value.
 	else {
 		memcpy(ret_val, &temp_page.record[idx].value, sizeof(VALUE_SIZE));
 		return 0;
@@ -279,7 +280,7 @@ int cut(int length) {
 	else return length / 2 + 1;
 }
 
-void start_new_tree(record* new_record) {
+void start_new_tree(record_t* new_record) {
 	// Allocate header page and get metadata.
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
@@ -289,7 +290,6 @@ void start_new_tree(record* new_record) {
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
 	HD->root_page_offset = pagenum_to_offset(file_alloc_page());
-	file_write_page(PAGENUM_OF_HEADER, HD);
 
 	// printf(" [%d] ", HD->root_page_offset);
 
@@ -297,12 +297,14 @@ void start_new_tree(record* new_record) {
 	new_leaf.pagenum = offset_to_pagenum(HD->root_page_offset);
 	new_leaf.parent_page_number = 0;
 	new_leaf.is_leaf = 1;
-	new_leaf.number_of_keys = 1; // Inserted in next next line.
+	new_leaf.number_of_keys = 1; // Key is inserted in the next next line.
 	new_leaf.right_sibling_page_number = 0;
-	memcpy(&new_leaf.record[0], new_record, sizeof(record));
+	memcpy(&new_leaf.record[0], new_record, sizeof(record_t));
+
+	file_write_page(PAGENUM_OF_HEADER, HD);
 	file_write_page(new_leaf.pagenum, &new_leaf);
 
-	//free(HD);
+	free(HD);
 	return;
 }
 
@@ -329,12 +331,12 @@ pagenum_t find_leaf(int64_t key) {
 	file_read_page(temp_pagenum, &temp_page);
 
 	while (!temp_page.is_leaf) {
-		int idx = 0;
-		while (idx < temp_page.number_of_keys) {
-			if (temp_page.internal_record[idx].key <= key) idx++;
-			else break;
+		int idx = -1;
+		while (temp_page.internal_record[idx+1].key <= key
+			&& idx + 1 < temp_page.number_of_keys) {
+			idx++;
 		}
-		if (idx == 0) temp_pagenum = temp_page.left_page_number;
+		if (idx == -1) temp_pagenum = temp_page.left_page_number;
 		else temp_pagenum = temp_page.internal_record[idx].page_number;
 
 		file_read_page(temp_pagenum, &temp_page);
@@ -343,25 +345,25 @@ pagenum_t find_leaf(int64_t key) {
 	return temp_pagenum;
 }
 
-void insert_into_leaf(page_t* temp_page, record* new_record) {
+void insert_into_leaf(page_t* temp_page, record_t* new_record) {
 	// Find insertion point.
 	int insertion_point = 0;
-	while (insertion_point < LEAF_ORDER - 1
+	while (insertion_point < temp_page->number_of_keys
 		&& temp_page->record[insertion_point].key < new_record->key)
 		insertion_point++;
 
 	// Make empty space for insert given record.
 	for (int i = temp_page->number_of_keys; i > insertion_point; --i) {
-		memcpy(&temp_page->record[i], &temp_page->record[i - 1], sizeof(record));
+		memcpy(&temp_page->record[i], &temp_page->record[i - 1], sizeof(record_t));
 	}
-	memcpy(&temp_page->record[insertion_point], new_record, sizeof(record));
+	memcpy(&temp_page->record[insertion_point], new_record, sizeof(record_t));
 	temp_page->number_of_keys++;
 
 	// Insert the new page which includes given record.
 	file_write_page(temp_page->pagenum, temp_page);
 }
 
-void insert_into_leaf_after_splitting(page_t* temp_page, record* new_record) {
+void insert_into_leaf_after_splitting(page_t* temp_page, record_t* new_record) {
 	// Create new leaf for insertion.
 	page_t new_leaf;
 	new_leaf.pagenum = file_alloc_page();
@@ -373,12 +375,13 @@ void insert_into_leaf_after_splitting(page_t* temp_page, record* new_record) {
 
 	// Find insertion point.
 	int insertion_point = 0;
-	while (insertion_point < LEAF_ORDER - 1
+	while (insertion_point < temp_page->number_of_keys
 		&& temp_page->record[insertion_point].key < new_record->key)
 		insertion_point++;
+
 	// Create temp record for saving all exisiting data.
-	record* temp_record;
-	temp_record = (record*)malloc(sizeof(record) * LEAF_ORDER);
+	record_t* temp_record;
+	temp_record = (record_t*)malloc(sizeof(record_t) * LEAF_ORDER);
 	if (temp_record == NULL) {
 		perror("Record creation @insert_into_leaf_after_splitting.");
 		exit(EXIT_FAILURE);
@@ -387,10 +390,10 @@ void insert_into_leaf_after_splitting(page_t* temp_page, record* new_record) {
 	// Back up exisiting data before insertion.
 	for (int i = 0, j = 0; i < temp_page->number_of_keys; ++i, ++j) {
 		if (j == insertion_point) j++; // Avoid insertion point.
-		memcpy(&temp_record[j], &temp_page->record[i], sizeof(record));
+		memcpy(&temp_record[j], &temp_page->record[i], sizeof(record_t));
 	}
 	// Inset new record in the insertion point.
-	memcpy(&temp_record[insertion_point], new_record, sizeof(record));
+	memcpy(&temp_record[insertion_point], new_record, sizeof(record_t));
 
 	// Initialize the key counter.
 	temp_page->number_of_keys = 0;
@@ -400,11 +403,11 @@ void insert_into_leaf_after_splitting(page_t* temp_page, record* new_record) {
 
 	// Copy the data divided by split point.
 	for (int i = 0; i < split_point; ++i) {
-		memcpy(&temp_page->record[i], &temp_record[i], sizeof(record));
+		memcpy(&temp_page->record[i], &temp_record[i], sizeof(record_t));
 		temp_page->number_of_keys++;
 	}
 	for (int i = split_point, j = 0; i < LEAF_ORDER; ++i, ++j) {
-		memcpy(&new_leaf.record[j], &temp_record[i], sizeof(record));
+		memcpy(&new_leaf.record[j], &temp_record[i], sizeof(record_t));
 		new_leaf.number_of_keys++;
 	}
 
@@ -412,6 +415,7 @@ void insert_into_leaf_after_splitting(page_t* temp_page, record* new_record) {
 	file_write_page(new_leaf.pagenum, &new_leaf);
 
 	insert_into_parent(temp_page, new_leaf.record[0].key, &new_leaf);
+	free(temp_record);
 	return;
 }
 
@@ -441,21 +445,23 @@ void insert_into_new_root(page_t* left, int64_t key, page_t* right) {
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
+		exit(EXIT_FAILURE);
 	}
 	file_read_page(PAGENUM_OF_HEADER, HD);
 	
 	// Allocate temporary in-memory page
-	page_t* temp_page = (page_t*)malloc(sizeof(page_t)); // Internal page
+	page_t* temp_page;
+	temp_page = (page_t*)malloc(sizeof(page_t)); // Internal page
 	if (temp_page == NULL) {
 		perror("Page creation @insert_into_new_root.");
 		exit(EXIT_FAILURE);
 	}
 
-	// Initial setting.
+	// Initial settings.
 	temp_page->pagenum = file_alloc_page();
 	temp_page->parent_page_number = 0;
 	temp_page->is_leaf = 0;
-	temp_page->number_of_keys = 1; // The key is inserted in next next line.
+	temp_page->number_of_keys = 1; // Key is inserted in the next next line.
 	temp_page->left_page_number = left->pagenum;
 	temp_page->internal_record[0].key = key;
 	temp_page->internal_record[0].page_number = right->pagenum;
@@ -484,7 +490,7 @@ void insert_into_node(page_t* node, int64_t key, page_t* right) {
 
 	// Copy records after the insertion point in the exisiting tree.
 	for (int i = node->number_of_keys; i > insertion_point; --i)
-		memcpy(&node->internal_record[i], &node->internal_record[i - 1], sizeof(internal_record));
+		memcpy(&node->internal_record[i], &node->internal_record[i - 1], sizeof(internal_record_t));
 
 	// Put new internal record in the insertion point.
 	node->internal_record[insertion_point].key = key;
@@ -499,12 +505,12 @@ void insert_into_node(page_t* node, int64_t key, page_t* right) {
 
 void insert_into_node_after_splitting(page_t* node, int64_t key, page_t* right) {
 	// Create temporary internal record containing given key and page number.
-	internal_record temp_internal_record;
+	internal_record_t temp_internal_record;
 	temp_internal_record.key = key;
 	temp_internal_record.page_number = node->pagenum;
 
 	// Allocate back-up internal record to keep every data in.
-	internal_record* backup_internal_record = (internal_record*)malloc(sizeof(internal_record) * INTERNAL_ORDER);
+	internal_record_t* backup_internal_record = (internal_record_t*)malloc(sizeof(internal_record_t) * INTERNAL_ORDER);
 	if (backup_internal_record == NULL) {
 		perror("Record creation @insert_into_node_after_splitting.");
 		exit(EXIT_FAILURE);
@@ -517,16 +523,15 @@ void insert_into_node_after_splitting(page_t* node, int64_t key, page_t* right) 
 		insertion_point++;
 
 	// Push-back what's remaining and put the temporary internal record in the insertion point.
-	for (int i = 0, j = 0; INTERNAL_ORDER - 1; ++i, ++j) {
+	for (int i = 0, j = 0; i < INTERNAL_ORDER - 1; ++i, ++j) {
 		if (j == insertion_point) j++;
-		memcpy(&backup_internal_record[j], &node->internal_record[i], sizeof(internal_record));
+		memcpy(&backup_internal_record[j], &node->internal_record[i], sizeof(internal_record_t));
 	}
-	memcpy(&backup_internal_record[insertion_point], &temp_internal_record, sizeof(internal_record));
+	memcpy(&backup_internal_record[insertion_point], &temp_internal_record, sizeof(internal_record_t));
 
 	// Create the new page and copy half records to the old and half to the new.
-	
 	// Make split point
-	int split_point = cut(INTERNAL_ORDER - 1);
+	int split_point = cut(INTERNAL_ORDER);
 
 	// Create new temporary page to insert in.
 	page_t temp_page;
@@ -541,31 +546,31 @@ void insert_into_node_after_splitting(page_t* node, int64_t key, page_t* right) 
 
 	// Copy records to node from back-up record BEFORE the split point.
 	for (int i = 0; i < split_point - 1; ++i) {
-		memcpy(&node->internal_record[i], &backup_internal_record[i], sizeof(internal_record));
+		memcpy(&node->internal_record[i], &backup_internal_record[i], sizeof(internal_record_t));
 		node->number_of_keys++;
 	}
 	// Set the k_prime number which is going to upper level by splitting.
 	int64_t k_prime = backup_internal_record[split_point - 1].key;
 	// Copy records to temporary page freom back-up just AFTER the split point.
 	for (int i = split_point, j = 0; i < INTERNAL_ORDER; ++i, ++j) {
-		memcpy(&temp_page.internal_record[j], &backup_internal_record[i], sizeof(internal_record));
+		memcpy(&temp_page.internal_record[j], &backup_internal_record[i], sizeof(internal_record_t));
 		temp_page.number_of_keys++;
 	}	
+	file_write_page(node->pagenum, node);
+	file_write_page(temp_page.pagenum, &temp_page);
 
 	// Change the children's parent page number into parent page number of temporary page.
 	page_t child;
+	file_read_page(temp_page.left_page_number, &child);
+	child.parent_page_number = temp_page.pagenum;
+	file_write_page(temp_page.left_page_number, &child);
 	for (int i = 0; i < temp_page.number_of_keys; ++i) {
 		file_read_page(temp_page.internal_record[i].page_number, &child);
 		child.parent_page_number = temp_page.parent_page_number;
 		file_write_page(temp_page.internal_record[i].page_number, &child);
 	}
-	file_read_page(temp_page.left_page_number, &child);
-	child.parent_page_number = temp_page.parent_page_number;
-	
-	// Update the pages to the file.
-	file_write_page(node->pagenum, node);
-	file_write_page(temp_page.pagenum, &temp_page);
-	file_write_page(temp_page.left_page_number, &child);
+
+	free(backup_internal_record);
 
 	// Insert a new key into the parent of the two pages resulting from the split,
 	// with the old page to the left and the new to the right.
@@ -575,7 +580,7 @@ void insert_into_node_after_splitting(page_t* node, int64_t key, page_t* right) 
 int db_insert(int64_t key, char* value) {
 	// The current implementation ignores duplicates.
 	int findng_result = db_find(key, value);
-	if (findng_result == 0 || findng_result == -1) {
+	if (findng_result == 0) {
 		return -1;
 	}
 
@@ -590,7 +595,7 @@ int db_insert(int64_t key, char* value) {
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
 	// Create a new record for the value.
-	record* new_record = (record*)malloc(sizeof(record));
+	record_t* new_record = (record_t*)malloc(sizeof(record_t));
 	if (new_record == NULL) {
 		perror("Record creation @db_insert.");
 		exit(EXIT_FAILURE);

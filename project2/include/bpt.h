@@ -23,18 +23,18 @@ typedef struct header_page {
 	uint64_t num_of_pages;
 	// For standardization
 	char reserved[4072];
-}header_page;
+}header_page_t;
 
 typedef struct free_page {
 	uint64_t next_free_page_number;
 	// For standardization
 	char reserved[4088];
-}free_page;
+}free_page_t;
 
 typedef struct internal_record {
 	uint64_t key;
 	uint64_t page_number;
-}internal_record;
+}internal_record_t;
 
 typedef struct internal_page {
 	uint64_t parent_page_number;
@@ -45,13 +45,13 @@ typedef struct internal_page {
 	char reserved[104];
 
 	uint64_t left_page_number;
-	internal_record internal_record[INTERNAL_ORDER - 1];
-}internal_page;
+	internal_record_t internal_record[INTERNAL_ORDER - 1];
+}internal_page_t;
 
 typedef struct record {
 	uint64_t key;
 	char value[VALUE_SIZE];
-}record;
+}record_t;
 
 typedef struct leaf_page {
 	uint64_t parent_page_number;
@@ -62,8 +62,8 @@ typedef struct leaf_page {
 	char reserved[104];
 
 	uint64_t right_sibling_page_number;
-	record record[LEAF_ORDER - 1];
-}leaf_page;
+	record_t record[LEAF_ORDER - 1];
+}leaf_page_t;
 
 /*
  * FILE MANAGER API.
@@ -92,8 +92,8 @@ typedef struct page {
 		uint64_t right_sibling_page_number; // Case: Leaf page
 	};
 	union {
-		internal_record internal_record[INTERNAL_ORDER - 1]; // Case: Internal page
-		record record[LEAF_ORDER - 1]; // Case: Leaf page
+		internal_record_t internal_record[INTERNAL_ORDER - 1]; // Case: Internal page
+		record_t record[LEAF_ORDER - 1]; // Case: Leaf page
 	};
 }page_t;
 
@@ -108,8 +108,8 @@ typedef struct temp_read_page {
 		uint64_t right_sibling_page_number; // Case: Leaf page
 	};
 	union {
-		internal_record internal_record[INTERNAL_ORDER - 1]; // Case: Internal page
-		record record[LEAF_ORDER - 1]; // Case: Leaf page
+		internal_record_t internal_record[INTERNAL_ORDER - 1]; // Case: Internal page
+		record_t record[LEAF_ORDER - 1]; // Case: Leaf page
 	};
 }temp_read_page_t;
 
@@ -143,9 +143,9 @@ int find_range(node * root, int key_start, int key_end, bool verbose, int return
 
 // Insertion.
 int db_insert(int64_t key, char* value);
-void start_new_tree(record* new_record);
-void insert_into_leaf(page_t* temp_page, record* new_record);
-void insert_into_leaf_after_splitting(page_t* temp_page, record* new_record);
+void start_new_tree(record_t* new_record);
+void insert_into_leaf(page_t* temp_page, record_t* new_record);
+void insert_into_leaf_after_splitting(page_t* temp_page, record_t* new_record);
 void insert_into_parent(page_t* left, int64_t key, page_t* right);
 void insert_into_new_root(page_t* left, int64_t key, page_t* right);
 void insert_into_node(page_t* node, int64_t key, page_t* right);
