@@ -7,7 +7,7 @@
 FILE* fp = NULL;
 page_t* HD;
 int num_of_opened_table = 0;
-bool verbose = 1;
+bool verbose = 0;
 
 void usage(int flag) {
 	printf("Enter any of the following commands after the prompt > :\n"
