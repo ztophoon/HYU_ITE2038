@@ -153,13 +153,13 @@ void insert_into_node_after_splitting(page_t* node_page, int64_t key, page_t* ri
 
 // Deletion.
 int db_delete(int64_t key);
+int get_neighbor_index(page_t* node, pagenum_t child_page_number);
+void adjust_root(page_t* node);
+void delete_entry(page_t* node, int64_t key);
+void coalesce_nodes(page_t* node, page_t* parent, page_t* neighbor, int neighbor_index, int k_prime);
+void redistribute_nodes(page_t* root, page_t* node, page_t* neighbor, int neighbor_index, int k_prime_index);
 
 /*
-int get_neighbor_index(node * n);
-node * adjust_root(node * root);
-node * coalesce_nodes(node * root, node * n, node * neighbor, int neighbor_index, int k_prime);
-node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_index, int k_prime_index, int k_prime);
-node * delete_entry(node * root, node * n, int key, void * pointer);
 void destroy_tree_nodes(node * root);
 node * destroy_tree(node * root);
 */

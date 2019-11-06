@@ -5,8 +5,10 @@
  */
 
 FILE* fp = NULL;
-int num_of_opened_table = 0;
-bool verbose = 1;
+page_t* HD;
+int num_of_opened_tablepage = 0;
+
+bool verbose = 0;
 
 void usage(int flag) {
 	printf("Enter any of the following commands after the prompt > :\n"
@@ -32,18 +34,20 @@ pagenum_t offset_to_pagenum(pagenum_t offset) {
 
 pagenum_t file_alloc_page() {
 	// Allocate header page and get metadata.
+	/*
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
 	}
+	*/
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
 	if (verbose) {
 		printf("<file_alloc_page>\n");
-		printf("free_page_offset: %d\n", HD->free_page_offset);
-		printf("num_of_pages: %d\n", HD->number_of_pages);
-		printf("root_page_offset: %d\n", HD->root_page_offset);
+		printf("free_page_offset: %lu\n", HD->free_page_offset);
+		printf("num_of_pages: %lu\n", HD->number_of_pages);
+		printf("root_page_offset: %lu\n", HD->root_page_offset);
 	}
 
 	// Case: There is free page for allocation.
@@ -56,7 +60,7 @@ pagenum_t file_alloc_page() {
 		HD->free_page_offset = temp_free_page.next_free_page_number;
 		file_write_page(PAGENUM_OF_HEADER, HD);
 
-		free(HD);
+		//free(HD);
 		return ret_pagenum;
 	}
 
@@ -64,7 +68,7 @@ pagenum_t file_alloc_page() {
 	else {
 		HD->free_page_offset = HD->number_of_pages * PAGE_SIZE;
 		pagenum_t ret_pagenum = offset_to_pagenum(HD->free_page_offset);
-		
+
 		fseek(fp, HD->free_page_offset, SEEK_SET);
 		//printf(" [%d] ", HD->free_page_offset);
 
@@ -72,31 +76,33 @@ pagenum_t file_alloc_page() {
 		for (int i = 1; i < 100; ++i) {
 			temp_free_page.next_free_page_number = HD->free_page_offset + i * PAGE_SIZE;
 			fwrite(&temp_free_page, PAGE_SIZE, 1, fp);
-			fflush(fp); //O_sync
+			fflush(fp);
 		}
 
 		// Creating 100th free page.
 		temp_free_page.next_free_page_number = 0;
 		fwrite(&temp_free_page, PAGE_SIZE, 1, fp);
-		fflush(fp); //O_sync
+		fflush(fp);
 
 		HD->number_of_pages += 100;
 		HD->free_page_offset += PAGE_SIZE;
 
 		file_write_page(PAGENUM_OF_HEADER, HD);
 
-		free(HD);
+		//free(HD);
 		return ret_pagenum;
 	}
 }
 
 void file_free_page(pagenum_t pagenum) {
 	// Allocate header page and get metadata.
+	/*
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
 	}
+	*/
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
 	free_page_t temp_free_page;
@@ -106,10 +112,10 @@ void file_free_page(pagenum_t pagenum) {
 	fseek(fp, pagenum_to_offset(pagenum), SEEK_SET);
 	fwrite(&temp_free_page, PAGE_SIZE, 1, fp);
 
-	fflush(fp); //O_sync
+	fflush(fp);
 	file_write_page(PAGENUM_OF_HEADER, HD);
-	
-	free(HD);
+
+	//free(HD);
 	return;
 }
 
@@ -194,7 +200,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 			memcpy(&temp_leaf.record[i], &src->record[i], sizeof(record_t));
 
 		fwrite(&temp_leaf, PAGE_SIZE, 1, fp);
-		fflush(fp); // O_sync @Linux
+		fflush(fp);
 
 		return;
 	}
@@ -202,20 +208,19 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 
 int open_table(char* pathname) {
 	// Assign unique table ID for each table.
-	int unique_table_id = ++num_of_opened_table;
+	int unique_table_id = ++num_of_opened_tablepage;
 
 	// Case: There is a file in the path.
 	// Open file in read & write mode with binary format.
 	if ((fp = fopen(pathname, "r+b")) != NULL) {
-		page_t* HD;
+		//page_t* HD;
 		HD = (page_t*)malloc(sizeof(page_t));
 		if (HD == NULL) {
-			perror("Page creation @open_table.");
-			exit(EXIT_FAILURE);
+			perror("Header creation @file_alloc_page.");
 		}
 		file_read_page(PAGENUM_OF_HEADER, HD);
 
-		free(HD);
+		//free(HD);
 		return unique_table_id;
 	}
 
@@ -228,11 +233,10 @@ int open_table(char* pathname) {
 			exit(EXIT_FAILURE);
 		}
 
-		page_t* HD;
+		//page_t* HD;
 		HD = (page_t*)malloc(sizeof(page_t));
 		if (HD == NULL) {
-			perror("Page creation @open_table.");
-			exit(EXIT_FAILURE);
+			perror("Header creation @file_alloc_page.");
 		}
 
 		// Create new header page.
@@ -244,7 +248,7 @@ int open_table(char* pathname) {
 		file_write_page(PAGENUM_OF_HEADER, HD);
 		file_alloc_page();
 
-		free(HD);
+		//free(HD);
 		return unique_table_id;
 	}
 }
@@ -290,11 +294,13 @@ int cut(int length) {
 
 void start_new_tree(record_t* new_record) {
 	// Allocate header page and get metadata.
+	/*
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
 	}
+	*/
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
 	HD->root_page_offset = pagenum_to_offset(file_alloc_page());
@@ -311,35 +317,36 @@ void start_new_tree(record_t* new_record) {
 
 	if (verbose) {
 		printf("<start_new_tree>\n");
-		printf("pagenum: %d\n", new_leaf.pagenum);
+		printf("pagenum: %lu\n", new_leaf.pagenum);
 	}
 
 	file_write_page(PAGENUM_OF_HEADER, HD);
 	file_write_page(new_leaf.pagenum, &new_leaf);
 
-	free(HD);
+	//free(HD);
 	return;
 }
 
 pagenum_t find_leaf(int64_t key) {
 	// Allocate header page and get metadata.
+	/*
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
-		exit(EXIT_FAILURE);
 	}
+	*/
 	file_read_page(PAGENUM_OF_HEADER, HD);
-	
+
 	if (verbose) {
 		printf("<find_leaf>\n");
-		printf("free_page_offset: %d\n", HD->free_page_offset);
-		printf("num_of_pages: %d\n", HD->number_of_pages);
-		printf("root_page_offset: %d\n", HD->root_page_offset);
+		printf("free_page_offset: %lu\n", HD->free_page_offset);
+		printf("num_of_pages: %lu\n", HD->number_of_pages);
+		printf("root_page_offset: %lu\n", HD->root_page_offset);
 	}
 
 	pagenum_t temp_pagenum = offset_to_pagenum(HD->root_page_offset);
-	free(HD);
+	//free(HD);
 
 	// Case: Pagenum indicates header.
 	if (temp_pagenum == 0) {
@@ -352,7 +359,7 @@ pagenum_t find_leaf(int64_t key) {
 
 	while (!temp_page.is_leaf) {
 		int idx = -1;
-		while (temp_page.internal_record[idx+1].key <= key
+		while (temp_page.internal_record[idx + 1].key <= key
 			&& idx + 1 < temp_page.number_of_keys) {
 			idx++;
 		}
@@ -450,7 +457,7 @@ void insert_into_parent(page_t* left, int64_t key, page_t* right) {
 	file_read_page(left->parent_page_number, &temp_page);
 
 	// Simple case: the new key fits into the node.
-	if (temp_page.number_of_keys < INTERNAL_ORDER - 1) 
+	if (temp_page.number_of_keys < INTERNAL_ORDER - 1)
 		insert_into_node(&temp_page, key, right);
 
 	// Harder case:  split a node in order to preserve the B+ tree properties.
@@ -461,19 +468,20 @@ void insert_into_parent(page_t* left, int64_t key, page_t* right) {
 
 void insert_into_new_root(page_t* left, int64_t key, page_t* right) {
 	// Allocate header page and get metadata.
+	/*
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
-		exit(EXIT_FAILURE);
 	}
+	*/
 	file_read_page(PAGENUM_OF_HEADER, HD);
-	
+
 	if (verbose) {
 		printf("<insert_into_new_root>\n");
-		printf("free_page_offset: %d\n", HD->free_page_offset);
-		printf("num_of_pages: %d\n", HD->number_of_pages);
-		printf("root_page_offset: %d\n", HD->root_page_offset);
+		printf("free_page_offset: %lu\n", HD->free_page_offset);
+		printf("num_of_pages: %lu\n", HD->number_of_pages);
+		printf("root_page_offset: %lu\n", HD->root_page_offset);
 	}
 
 	// Allocate temporary in-memory page
@@ -582,7 +590,7 @@ void insert_into_node_after_splitting(page_t* node_page, int64_t key, page_t* ri
 	for (int i = split_point, j = 0; i < INTERNAL_ORDER; ++i, ++j) {
 		memcpy(&temp_page.internal_record[j], &backup_internal_record[i], sizeof(internal_record_t));
 		temp_page.number_of_keys++;
-	}	
+	}
 	file_write_page(node_page->pagenum, node_page);
 	file_write_page(temp_page.pagenum, &temp_page);
 
@@ -614,11 +622,13 @@ int db_insert(int64_t key, char* value) {
 	//printf("[%ld: %s] in db_insert\n", key, value);
 
 	// Allocate header page and get metadata.
+	/*
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
 	}
+	*/
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
 	// Create a new record for the value.
@@ -639,7 +649,7 @@ int db_insert(int64_t key, char* value) {
 	if (HD->root_page_offset == 0) {
 		start_new_tree(new_record);
 		free(new_record);
-		free(HD);
+		//free(HD);
 		return 0;
 	}
 
@@ -660,13 +670,223 @@ int db_insert(int64_t key, char* value) {
 	}
 
 	free(new_record);
-	free(HD);
+	//free(HD);
 	return 0;
 }
 
 /*
  * Delete
  */
+
+void adjust_root(page_t* node) {
+	// Case: Root is not empty.
+	if (node->number_of_keys > 0) {
+		file_write_page(node->pagenum, node);
+		return;
+	}
+
+	// Case: Root is empty with no sibling.
+	else if (node->is_leaf) {
+		file_free_page(node->pagenum);
+		HD->root_page_offset = 0;
+		file_write_page(PAGENUM_OF_HEADER, HD);
+		return;
+	}
+
+	// Case: Root is empty with siblings.
+	else {
+		file_free_page(node->pagenum);
+		HD->root_page_offset = node->left_page_number;
+
+		page_t temp_page;
+		file_read_page(offset_to_pagenum(HD->root_page_offset), &temp_page);
+
+		// Adjust parent page number to header page number
+		temp_page.parent_page_number = PAGENUM_OF_HEADER;
+		file_write_page(offset_to_pagenum(HD->root_page_offset), &temp_page);
+
+		file_write_page(PAGENUM_OF_HEADER, HD);
+		return;
+	}
+}
+
+void redistribute_nodes(page_t* node, page_t* parent, page_t* neighbor, int neighbor_index, int k_prime_index) {
+	internal_record_t* temp_k_prime = (internal_record_t*)malloc(sizeof(internal_record_t));
+	temp_k_prime->key = parent->internal_record[k_prime_index].key;
+	temp_k_prime->page_number = neighbor->left_page_number;
+	
+	// Case: node has neighbor to the left.
+	if (neighbor_index == -2) {
+		memcpy(&parent->internal_record[k_prime_index], &neighbor->internal_record[0], sizeof(internal_record_t));
+		parent->internal_record[k_prime_index].page_number = neighbor->pagenum;
+
+		memcpy(&node->internal_record[0], temp_k_prime, sizeof(internal_record_t));
+		node->number_of_keys++;
+
+		neighbor->left_page_number = neighbor->internal_record[0].page_number;
+		for (int i = 0; i < neighbor->number_of_keys - 1; ++i)
+			memcpy(&neighbor->internal_record[i], &neighbor->internal_record[i + 1], sizeof(internal_record_t));
+		neighbor->number_of_keys--;
+
+		free(temp_k_prime);
+	}
+
+	// Case: node is the leftmost child.
+	else {
+		memcpy(&parent->internal_record[k_prime_index], &neighbor->internal_record[neighbor->number_of_keys-1], sizeof(internal_record_t));
+		parent->internal_record[k_prime_index].page_number = node->pagenum;
+
+		pagenum_t right_page_number = neighbor->internal_record[neighbor->number_of_keys - 1].page_number;
+		neighbor->number_of_keys--;
+
+		memcpy(&node->internal_record[0], temp_k_prime, sizeof(internal_record_t));
+		node->number_of_keys++;
+
+		node->internal_record[0].page_number = node->left_page_number;
+		node->left_page_number = right_page_number;
+
+		free(temp_k_prime);
+	}
+
+	file_write_page(node->pagenum, node);
+	file_write_page(parent->pagenum, parent);
+	file_write_page(neighbor->pagenum, neighbor);
+
+	return;
+}
+
+void coalesce_nodes(page_t* node, page_t* parent, page_t* neighbor, int neighbor_index, int k_prime_key) {
+	
+	// Swap neighbor with node.
+	if (neighbor_index == -2) {
+		page_t* temp_page;
+		temp_page = node;
+		node = neighbor;
+		neighbor = temp_page;
+	}
+
+	// Case: nonleaf node.
+	if (!node->is_leaf) {
+		internal_record_t* k_prime_index = (internal_record_t*)malloc(sizeof(internal_record_t));
+		k_prime_index->key = k_prime_key;
+		k_prime_index->page_number = node->left_page_number;
+		neighbor->number_of_keys++;
+
+		for (int i = 0, j = neighbor->number_of_keys; i < node->number_of_keys; ++i, ++j) {
+			memcpy(&neighbor->internal_record[j], &node->internal_record[i], sizeof(internal_record_t));
+			neighbor->number_of_keys++;
+		}
+
+		page_t temp_page;
+		for (int i = 0; i < neighbor->number_of_keys; ++i) {
+			file_read_page(neighbor->internal_record[i].page_number, &temp_page);
+			temp_page.parent_page_number = neighbor->pagenum;
+			file_write_page(neighbor->internal_record[i].page_number, &temp_page);
+		}
+
+		free(k_prime_index);
+	}
+
+	// Case: leaf node
+	else {
+		for (int i = 0, j = neighbor->number_of_keys; i < node->number_of_keys; ++i, ++j) {
+			memcpy(&neighbor->record[j], &node->record[i], sizeof(record_t));
+			neighbor->number_of_keys++;
+		}
+		neighbor->right_sibling_page_number = node->right_sibling_page_number;
+	}
+
+	file_write_page(neighbor->pagenum, neighbor);
+	file_free_page(node->pagenum);
+
+	return delete_entry(parent, k_prime_key);
+}
+
+int get_neighbor_index(page_t* node, pagenum_t child_page_number) {
+	if (node->left_page_number = child_page_number) return -2;
+	for (int i = 0; i < node->number_of_keys; ++i)
+		if (node->internal_record[i].page_number) return i - 1;
+
+	perror("Pointing nonexisiting pointer @get_neighbor_index ");
+	exit(EXIT_FAILURE);
+}
+
+void delete_entry(page_t* node, int64_t key) {
+	int min_keys = 1;
+
+	// Remove key and pointer from node.
+	// Case : node for deletion is leaf.
+	if (node->is_leaf) {
+		int i = 0;
+		while (node->record[i].key != key) i++;
+		for (++i; i < node->number_of_keys; ++i)
+			memcpy(&node->record[i - 1], &node->record[i], sizeof(record_t));
+		node->number_of_keys--;
+	}
+	
+	// Case : node for deletion is internal.
+	else {
+		int i = 0;
+		while (node->internal_record->key != key) i++;
+		for (++i; i < node->number_of_keys; ++i)
+			memcpy(&node->internal_record[i - 1], &node->internal_record[i], sizeof(internal_record_t));
+		node->number_of_keys--;
+	}
+
+	// Case: node for deletion is root.
+	if (HD->root_page_offset == pagenum_to_offset(node->pagenum)) {
+		return adjust_root(node);
+	}
+
+	// Case: Deletion from a node below the root.
+	// (Rest of function body.)
+
+	// Case:  node stays at or above minimum.
+	if (node->number_of_keys >= min_keys) {
+		file_write_page(node->pagenum, node);
+		return;
+	}
+
+	// Case: node falls below minimum
+	page_t temp_parent_page;
+	file_read_page(node->parent_page_number, &temp_parent_page);
+
+	int neighbor_index = get_neighbor_index(&temp_parent_page, node->pagenum);
+	int k_prime_index;
+	if (neighbor_index == -2 || neighbor_index == -1) {
+		k_prime_index = 0;
+	}
+	else {
+		k_prime_index = neighbor_index + 1;
+	}
+
+	int64_t k_prime_key = temp_parent_page.internal_record[k_prime_index].key;
+	pagenum_t neighbor_page_number;
+
+	switch (neighbor_index) {
+	case -2:
+		neighbor_page_number = temp_parent_page.internal_record[0].page_number;
+		break;
+	case -1:
+		neighbor_page_number = temp_parent_page.left_page_number;
+		break;
+	default:
+		neighbor_page_number = temp_parent_page.internal_record[neighbor_index].page_number;
+		break;
+	}
+
+	page_t temp_neighbor_page;
+	file_read_page(neighbor_page_number, &temp_neighbor_page);
+
+	int capacity = node->is_leaf ? LEAF_ORDER : INTERNAL_ORDER - 1;
+
+	// Case: Coalescence.
+	if (temp_neighbor_page.number_of_keys + node->number_of_keys < capacity)
+		return coalesce_nodes(node, &temp_parent_page, &temp_neighbor_page, neighbor_index, k_prime_key);
+
+	// Case: Redistribution
+	return redistribute_nodes(node, &temp_parent_page, &temp_neighbor_page, neighbor_index, k_prime_index);
+}
 
 int db_delete(int64_t key) {
 	page_t * temp_page;
@@ -676,7 +896,7 @@ int db_delete(int64_t key) {
 	db_find(key, temp_value);
 
 	if (temp_value != NULL && temp_page != NULL) {
-		//delete_entry(temp_page, temp_page->pagenum, key);
+		delete_entry(temp_page, key);
 		return 0;
 	}
 
@@ -688,11 +908,13 @@ void enqueue(pagenum_t offset, queue* q) { q->arr[++q->r] = offset; }
 pagenum_t dequeue(queue* q) { return q->arr[q->f++]; }
 int get_rank(uint64_t offset) {
 	// Allocate header page and get metadata.
+	/*
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
 	}
+	*/
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
 	page_t* pg = (page_t*)malloc(sizeof(page_t));
@@ -705,21 +927,23 @@ int get_rank(uint64_t offset) {
 	}
 
 	free(pg);
-	free(HD);
+	//free(HD);
 	return rank;
 }
 void print_tree() {
 	// Allocate header page and get metadata.
+	/*
 	page_t* HD;
 	HD = (page_t*)malloc(sizeof(page_t));
 	if (HD == NULL) {
 		perror("Header creation @file_alloc_page.");
 	}
+	*/
 	file_read_page(PAGENUM_OF_HEADER, HD);
 
 	if (HD->root_page_offset == 0) {
 		printf("Empty tree!\n");
-		free(HD);
+		//free(HD);
 		return;
 	}
 
@@ -750,6 +974,7 @@ void print_tree() {
 			for (int i = 0; i < node->number_of_keys; ++i)
 				printf("%ld  ", node->internal_record[i].key);
 			enqueue(node->left_page_number, q);
+
 			for (int i = 0; i < node->number_of_keys; ++i)
 				enqueue(node->internal_record[i].page_number, q);
 		}
@@ -763,7 +988,7 @@ void print_tree() {
 
 	free(q->arr);
 	free(q);
-	free(HD);
+	//free(HD);
 
 	return;
 }

@@ -5,7 +5,7 @@ int main(int argc, char ** argv) {
 	char* inp_val;
 	char* ret_val;
 	char instruction[10];
-	
+
 	/*
 	char* temp_path_name;
 	temp_path_name = (char*)malloc(sizeof(char) * 100);
@@ -20,18 +20,18 @@ int main(int argc, char ** argv) {
 
 	while (scanf("%s", instruction) != EOF) {
 		switch (instruction[0]) {
-		/*
-		case 'o': // OPEN
-			inp_val = (char*)malloc(sizeof(char) * VALUE_SIZE);
-			if (inp_val == NULL) {
-				perror("String creation @main");
-				exit(EXIT_FAILURE);
-			}
-			scanf("%s", inp_val);
-			int table_id = open_table(inp_val);
-			if (table_id != 0) printf("File is successfully opened!\n");
-			break;
-		*/
+			/*
+			case 'o': // OPEN
+				inp_val = (char*)malloc(sizeof(char) * VALUE_SIZE);
+				if (inp_val == NULL) {
+					perror("String creation @main");
+					exit(EXIT_FAILURE);
+				}
+				scanf("%s", inp_val);
+				int table_id = open_table(inp_val);
+				if (table_id != 0) printf("File is successfully opened!\n");
+				break;
+			*/
 		case 'i': // INSERT
 			inp_val = (char*)malloc(sizeof(char) * VALUE_SIZE);
 			if (inp_val == NULL) {
@@ -78,3 +78,4 @@ int main(int argc, char ** argv) {
 	printf("\n");
 	return EXIT_SUCCESS;
 }
+

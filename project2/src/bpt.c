@@ -6,7 +6,8 @@
 
 FILE* fp = NULL;
 page_t* HD;
-int num_of_opened_table = 0;
+int num_of_opened_tablepage = 0;
+
 bool verbose = 0;
 
 void usage(int flag) {
@@ -207,7 +208,7 @@ void file_write_page(pagenum_t pagenum, const page_t * src) {
 
 int open_table(char* pathname) {
 	// Assign unique table ID for each table.
-	int unique_table_id = ++num_of_opened_table;
+	int unique_table_id = ++num_of_opened_tablepage;
 
 	// Case: There is a file in the path.
 	// Open file in read & write mode with binary format.
@@ -677,6 +678,216 @@ int db_insert(int64_t key, char* value) {
  * Delete
  */
 
+void adjust_root(page_t* node) {
+	// Case: Root is not empty.
+	if (node->number_of_keys > 0) {
+		file_write_page(node->pagenum, node);
+		return;
+	}
+
+	// Case: Root is empty with no sibling.
+	else if (node->is_leaf) {
+		file_free_page(node->pagenum);
+		HD->root_page_offset = 0;
+		file_write_page(PAGENUM_OF_HEADER, HD);
+		return;
+	}
+
+	// Case: Root is empty with siblings.
+	else {
+		file_free_page(node->pagenum);
+		HD->root_page_offset = node->left_page_number;
+
+		page_t temp_page;
+		file_read_page(offset_to_pagenum(HD->root_page_offset), &temp_page);
+
+		// Adjust parent page number to header page number
+		temp_page.parent_page_number = PAGENUM_OF_HEADER;
+		file_write_page(offset_to_pagenum(HD->root_page_offset), &temp_page);
+
+		file_write_page(PAGENUM_OF_HEADER, HD);
+		return;
+	}
+}
+
+void redistribute_nodes(page_t* node, page_t* parent, page_t* neighbor, int neighbor_index, int k_prime_index) {
+	internal_record_t* temp_k_prime = (internal_record_t*)malloc(sizeof(internal_record_t));
+	temp_k_prime->key = parent->internal_record[k_prime_index].key;
+	temp_k_prime->page_number = neighbor->left_page_number;
+	
+	// Case: node has neighbor to the left.
+	if (neighbor_index == -2) {
+		memcpy(&parent->internal_record[k_prime_index], &neighbor->internal_record[0], sizeof(internal_record_t));
+		parent->internal_record[k_prime_index].page_number = neighbor->pagenum;
+
+		memcpy(&node->internal_record[0], temp_k_prime, sizeof(internal_record_t));
+		node->number_of_keys++;
+
+		neighbor->left_page_number = neighbor->internal_record[0].page_number;
+		for (int i = 0; i < neighbor->number_of_keys - 1; ++i)
+			memcpy(&neighbor->internal_record[i], &neighbor->internal_record[i + 1], sizeof(internal_record_t));
+		neighbor->number_of_keys--;
+
+		free(temp_k_prime);
+	}
+
+	// Case: node is the leftmost child.
+	else {
+		memcpy(&parent->internal_record[k_prime_index], &neighbor->internal_record[neighbor->number_of_keys-1], sizeof(internal_record_t));
+		parent->internal_record[k_prime_index].page_number = node->pagenum;
+
+		pagenum_t right_page_number = neighbor->internal_record[neighbor->number_of_keys - 1].page_number;
+		neighbor->number_of_keys--;
+
+		memcpy(&node->internal_record[0], temp_k_prime, sizeof(internal_record_t));
+		node->number_of_keys++;
+
+		node->internal_record[0].page_number = node->left_page_number;
+		node->left_page_number = right_page_number;
+
+		free(temp_k_prime);
+	}
+
+	file_write_page(node->pagenum, node);
+	file_write_page(parent->pagenum, parent);
+	file_write_page(neighbor->pagenum, neighbor);
+
+	return;
+}
+
+void coalesce_nodes(page_t* node, page_t* parent, page_t* neighbor, int neighbor_index, int k_prime_key) {
+	
+	// Swap neighbor with node.
+	if (neighbor_index == -2) {
+		page_t* temp_page;
+		temp_page = node;
+		node = neighbor;
+		neighbor = temp_page;
+	}
+
+	// Case: nonleaf node.
+	if (!node->is_leaf) {
+		internal_record_t* k_prime_index = (internal_record_t*)malloc(sizeof(internal_record_t));
+		k_prime_index->key = k_prime_key;
+		k_prime_index->page_number = node->left_page_number;
+		neighbor->number_of_keys++;
+
+		for (int i = 0, j = neighbor->number_of_keys; i < node->number_of_keys; ++i, ++j) {
+			memcpy(&neighbor->internal_record[j], &node->internal_record[i], sizeof(internal_record_t));
+			neighbor->number_of_keys++;
+		}
+
+		page_t temp_page;
+		for (int i = 0; i < neighbor->number_of_keys; ++i) {
+			file_read_page(neighbor->internal_record[i].page_number, &temp_page);
+			temp_page.parent_page_number = neighbor->pagenum;
+			file_write_page(neighbor->internal_record[i].page_number, &temp_page);
+		}
+
+		free(k_prime_index);
+	}
+
+	// Case: leaf node
+	else {
+		for (int i = 0, j = neighbor->number_of_keys; i < node->number_of_keys; ++i, ++j) {
+			memcpy(&neighbor->record[j], &node->record[i], sizeof(record_t));
+			neighbor->number_of_keys++;
+		}
+		neighbor->right_sibling_page_number = node->right_sibling_page_number;
+	}
+
+	file_write_page(neighbor->pagenum, neighbor);
+	file_free_page(node->pagenum);
+
+	return delete_entry(parent, k_prime_key);
+}
+
+int get_neighbor_index(page_t* node, pagenum_t child_page_number) {
+	if (node->left_page_number = child_page_number) return -2;
+	for (int i = 0; i < node->number_of_keys; ++i)
+		if (node->internal_record[i].page_number) return i - 1;
+
+	perror("Pointing nonexisiting pointer @get_neighbor_index ");
+	exit(EXIT_FAILURE);
+}
+
+void delete_entry(page_t* node, int64_t key) {
+	int min_keys = 1;
+
+	// Remove key and pointer from node.
+	// Case : node for deletion is leaf.
+	if (node->is_leaf) {
+		int i = 0;
+		while (node->record[i].key != key) i++;
+		for (++i; i < node->number_of_keys; ++i)
+			memcpy(&node->record[i - 1], &node->record[i], sizeof(record_t));
+		node->number_of_keys--;
+	}
+	
+	// Case : node for deletion is internal.
+	else {
+		int i = 0;
+		while (node->internal_record->key != key) i++;
+		for (++i; i < node->number_of_keys; ++i)
+			memcpy(&node->internal_record[i - 1], &node->internal_record[i], sizeof(internal_record_t));
+		node->number_of_keys--;
+	}
+
+	// Case: node for deletion is root.
+	if (HD->root_page_offset == pagenum_to_offset(node->pagenum)) {
+		return adjust_root(node);
+	}
+
+	// Case: Deletion from a node below the root.
+	// (Rest of function body.)
+
+	// Case:  node stays at or above minimum.
+	if (node->number_of_keys >= min_keys) {
+		file_write_page(node->pagenum, node);
+		return;
+	}
+
+	// Case: node falls below minimum
+	page_t temp_parent_page;
+	file_read_page(node->parent_page_number, &temp_parent_page);
+
+	int neighbor_index = get_neighbor_index(&temp_parent_page, node->pagenum);
+	int k_prime_index;
+	if (neighbor_index == -2 || neighbor_index == -1) {
+		k_prime_index = 0;
+	}
+	else {
+		k_prime_index = neighbor_index + 1;
+	}
+
+	int64_t k_prime_key = temp_parent_page.internal_record[k_prime_index].key;
+	pagenum_t neighbor_page_number;
+
+	switch (neighbor_index) {
+	case -2:
+		neighbor_page_number = temp_parent_page.internal_record[0].page_number;
+		break;
+	case -1:
+		neighbor_page_number = temp_parent_page.left_page_number;
+		break;
+	default:
+		neighbor_page_number = temp_parent_page.internal_record[neighbor_index].page_number;
+		break;
+	}
+
+	page_t temp_neighbor_page;
+	file_read_page(neighbor_page_number, &temp_neighbor_page);
+
+	int capacity = node->is_leaf ? LEAF_ORDER : INTERNAL_ORDER - 1;
+
+	// Case: Coalescence.
+	if (temp_neighbor_page.number_of_keys + node->number_of_keys < capacity)
+		return coalesce_nodes(node, &temp_parent_page, &temp_neighbor_page, neighbor_index, k_prime_key);
+
+	// Case: Redistribution
+	return redistribute_nodes(node, &temp_parent_page, &temp_neighbor_page, neighbor_index, k_prime_index);
+}
+
 int db_delete(int64_t key) {
 	page_t * temp_page;
 	temp_page->pagenum = find_leaf(key);
@@ -685,7 +896,7 @@ int db_delete(int64_t key) {
 	db_find(key, temp_value);
 
 	if (temp_value != NULL && temp_page != NULL) {
-		//delete_entry(temp_page, temp_page->pagenum, key);
+		delete_entry(temp_page, key);
 		return 0;
 	}
 
@@ -763,6 +974,7 @@ void print_tree() {
 			for (int i = 0; i < node->number_of_keys; ++i)
 				printf("%ld  ", node->internal_record[i].key);
 			enqueue(node->left_page_number, q);
+
 			for (int i = 0; i < node->number_of_keys; ++i)
 				enqueue(node->internal_record[i].page_number, q);
 		}
